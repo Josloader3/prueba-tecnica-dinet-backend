@@ -1,0 +1,330 @@
+openapi: 3.1.0
+info:
+  title: API Reactiva de Gestión de Solicitudes
+  description: "Microservicio reactivo desarrollado con Spring WebFlux y PostgreSQL\
+    \ para el registro, consulta, filtrado y exportación de solicitudes y contactos."
+  contact:
+    name: Solicitudes
+    email: desarrollo@jbautista.com.pe
+  license:
+    name: Apache 2.0
+    url: https://spring.io
+  version: 1.0.0
+servers:
+- url: http://localhost:8080
+  description: Servidor Local de Desarrollo
+tags:
+- name: Solicitudes
+  description: Endpoints para la gestión reactiva de Solicitudes y Contactos
+paths:
+  /api/solicitudes:
+    get:
+      tags:
+      - Solicitudes
+      summary: Listar solicitudes con filtros y ordenamiento
+      description: "Permite filtrar por fecha de envío y tipo de solicitud, y ordenar\
+        \ dinámicamente por columnas."
+      operationId: listarSolicitudes
+      parameters:
+      - name: fecha
+        in: query
+        description: Filtrar por fecha de envío (YYYY-MM-DD)
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: tipoSolicitud
+        in: query
+        description: Filtrar por tipo de solicitud
+        required: false
+        schema:
+          type: string
+      - name: sortBy
+        in: query
+        description: "Campo de ordenamiento (codigo, marca, tipoSolicitud, fechaEnvio,\
+          \ nombreContacto, numeroContacto, fechaCreacion, id)"
+        required: false
+        schema:
+          type: string
+          default: id
+      - name: sortDirection
+        in: query
+        description: "Dirección de ordenamiento (asc, desc)"
+        required: false
+        schema:
+          type: string
+          default: desc
+      responses:
+        "200":
+          description: Lista de solicitudes obtenida exitosamente
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SolicitudResponseDto"
+    post:
+      tags:
+      - Solicitudes
+      summary: Registrar una nueva solicitud
+      description: Crea una solicitud con código autogenerado y almacena sus contactos
+        asociados en tabla separada.
+      operationId: crearSolicitud
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudRequestDto"
+        required: true
+      responses:
+        "201":
+          description: Solicitud creada exitosamente
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SolicitudResponseDto"
+        "400":
+          description: Datos de entrada inválidos o errores de validación
+  /api/solicitudes/{id}:
+    get:
+      tags:
+      - Solicitudes
+      summary: Obtener solicitud por ID
+      description: Retorna el detalle completo de una solicitud y su lista de contactos
+        asociados.
+      operationId: obtenerPorId
+      parameters:
+      - name: id
+        in: path
+        description: ID numérico de la solicitud
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      responses:
+        "200":
+          description: Solicitud encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SolicitudResponseDto"
+        "404":
+          description: Solicitud no encontrada
+  /api/solicitudes/tipos:
+    get:
+      tags:
+      - Solicitudes
+      summary: Listar tipos de solicitud únicos
+      description: Retorna la lista de tipos de solicitud existentes para llenar combos
+        de filtrado.
+      operationId: listarTiposSolicitud
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /api/solicitudes/marcas:
+    get:
+      tags:
+      - Solicitudes
+      summary: Listar marcas únicas
+      description: Retorna la lista de marcas comerciales existentes en la base de
+        datos.
+      operationId: listarMarcas
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /api/solicitudes/export/csv:
+    get:
+      tags:
+      - Solicitudes
+      summary: Exportar solicitudes a formato CSV
+      description: Genera un archivo CSV descargable con el listado de solicitudes
+        y sus datos registrados.
+      operationId: exportarCsv
+      parameters:
+      - name: fecha
+        in: query
+        description: Filtrar por fecha de envío (YYYY-MM-DD)
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: tipoSolicitud
+        in: query
+        description: Filtrar por tipo de solicitud
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Archivo CSV generado exitosamente
+          content:
+            text/csv: {}
+  /api/solicitudes/codigo/{codigo}:
+    get:
+      tags:
+      - Solicitudes
+      summary: Obtener solicitud por Código autogenerado
+      description: Retorna el detalle completo de una solicitud usando su código único.
+      operationId: obtenerPorCodigo
+      parameters:
+      - name: codigo
+        in: path
+        description: Código autogenerado de la solicitud
+        required: true
+        schema:
+          type: string
+        example: SOL-20261029-1001
+      responses:
+        "200":
+          description: Solicitud encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SolicitudResponseDto"
+        "404":
+          description: Solicitud no encontrada con el código proporcionado
+components:
+  schemas:
+    ContactoRequestDto:
+      type: object
+      description: Datos para crear o asociar un contacto a la solicitud
+      properties:
+        nombreContacto:
+          type: string
+          description: Nombre completo del contacto
+          example: Pedro Ramirez
+          maxLength: 150
+          minLength: 0
+        numeroContacto:
+          type: string
+          description: Número telefónico del contacto (solo dígitos numéricos)
+          example: 911223344
+          maxLength: 20
+          minLength: 6
+          pattern: "^[0-9]+$"
+      required:
+      - nombreContacto
+      - numeroContacto
+    SolicitudRequestDto:
+      type: object
+      description: Datos requeridos para registrar una nueva solicitud
+      properties:
+        marca:
+          type: string
+          description: Marca comercial
+          example: Samsung
+          maxLength: 100
+          minLength: 0
+        tipoSolicitud:
+          type: string
+          description: Tipo o motivo de la solicitud
+          example: Cotización
+          maxLength: 100
+          minLength: 0
+        fechaEnvio:
+          type: string
+          format: date
+          description: Fecha de envío (formato YYYY-MM-DD)
+          example: 2026-10-29
+        numeroContacto:
+          type: string
+          description: Número telefónico de contacto principal (solo dígitos)
+          example: 987654321
+          maxLength: 20
+          minLength: 6
+          pattern: "^[0-9]+$"
+        nombreContacto:
+          type: string
+          description: Nombre del contacto principal
+          example: Carlos Mendoza
+          maxLength: 150
+          minLength: 0
+        contactos:
+          type: array
+          description: Lista opcional de N contactos adicionales asociados a la solicitud
+          items:
+            $ref: "#/components/schemas/ContactoRequestDto"
+      required:
+      - fechaEnvio
+      - marca
+      - nombreContacto
+      - numeroContacto
+      - tipoSolicitud
+    ContactoResponseDto:
+      type: object
+      description: Detalle del contacto registrado
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador único del contacto
+          example: 1
+        solicitudId:
+          type: integer
+          format: int64
+          description: Identificador de la solicitud a la que pertenece
+          example: 1
+        nombreContacto:
+          type: string
+          description: Nombre del contacto
+          example: Pedro Ramirez
+        numeroContacto:
+          type: string
+          description: Número telefónico del contacto
+          example: 911223344
+    SolicitudResponseDto:
+      type: object
+      description: Respuesta detallada de una solicitud registrada
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador interno
+          example: 1
+        codigo:
+          type: string
+          description: Código autogenerado de la solicitud
+          example: SOL-20261029-4821
+        marca:
+          type: string
+          description: Marca comercial
+          example: Samsung
+        tipoSolicitud:
+          type: string
+          description: Tipo de solicitud
+          example: Cotización
+        fechaEnvio:
+          type: string
+          format: date
+          description: Fecha de envío
+          example: 2026-10-29
+        numeroContacto:
+          type: string
+          description: Número telefónico de contacto principal
+          example: 987654321
+        nombreContacto:
+          type: string
+          description: Nombre de contacto principal
+          example: Carlos Mendoza
+        fechaCreacion:
+          type: string
+          format: date-time
+          description: Fecha y hora de registro en el sistema
+        contactos:
+          type: array
+          description: Lista de N contactos asociados a la solicitud
+          items:
+            $ref: "#/components/schemas/ContactoResponseDto"
