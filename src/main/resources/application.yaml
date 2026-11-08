@@ -1,3 +1,35 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: prueba-tecnica-dinet-backend
+
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dinet_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:root}
+    pool:
+      enabled: true
+      initial-size: 5
+      max-size: 20
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+      continue-on-error: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+logging:
+  level:
+    com.dinet.solicitudes: DEBUG
+    org.springframework.r2dbc: INFO
